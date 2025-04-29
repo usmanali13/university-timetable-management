@@ -1,17 +1,29 @@
-import express from 'express';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import { errorHandler } from "./middlewares/errorHandler.js";
 
+// import Routes
+import userRoutes from "./routes/user.route.js";
+import { ApiError } from "./utils/ApiError";
 const app = express();
 
 const corsOptions = {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    credentials: true,
-}
+  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  credentials: true,
+};
 app.use(cors(corsOptions));
-app.use(express.json({limit: '50kb' }));
-app.use(express.urlencoded({ extended: true, limit: '50kb' }));
-app.use(express.static('public'));
+app.use(express.json({ limit: "50kb" }));
+app.use(express.urlencoded({ extended: true, limit: "50kb" }));
+app.use(express.static("public"));
 app.use(cookieParser());
+
+app.use("/api/v1/users", userRoutes);
+
+app.use((req, res, next) => {
+  next(new ApiError(404, "Route not found"));
+});
+
+app.use(errorHandler);
 
 export default app;
