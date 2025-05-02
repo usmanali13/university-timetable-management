@@ -10,13 +10,7 @@ import {
   updateUserPassword,
   deleteUserAccount,
 } from "../controllers/user.controller.js";
-// import {
-//   createInstructor,
-//   getInstructor,
-//   getAllInstructors,
-//   updateInstructor,
-//   deleteInstructor,
-// } from "../controllers/instructor.controller.js";
+
 // import {
 //   createRoom,
 //   getRoom,
@@ -55,23 +49,6 @@ router
 router
   .route("/delete-accountStudent")
   .delete(verifyJWT, checkRole("Student"), deleteUserAccount);
-
-// ✅ Instructor CRUD
-// router
-//   .route("/admin/add-instructor")
-//   .post(verifyJWT, checkRole("Admin"), createInstructor);
-// router
-//   .route("/admin/get-instructor")
-//   .get(verifyJWT, checkRole("Admin"), getInstructor);
-// router
-//   .route("/admin/get-all-instructor")
-//   .get(verifyJWT, checkRole("Admin"), getAllInstructors);
-// router
-//   .route("/admin/update-instructor/:instructorId")
-//   .patch(verifyJWT, checkRole("Admin"), updateInstructor);
-// router
-//   .route("/admin/delete-instructor/:instructorId")
-//   .delete(verifyJWT, checkRole("Admin"), deleteInstructor);
 
 // ✅ Room CRUD
 // router.route("/admin/add-room").post(verifyJWT, checkRole("Admin"), createRoom);
