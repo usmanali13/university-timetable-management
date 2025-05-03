@@ -12,13 +12,6 @@ import {
 } from "../controllers/user.controller.js";
 
 // import {
-//   createRoom,
-//   getRoom,
-//   getAllRooms,
-//   updateRoom,
-//   deleteRoom,
-// } from "../controllers/room.controller.js";
-// import {
 //   generateTimetable,
 //   getTimetable,
 //   editTimetableEntry,
@@ -49,19 +42,6 @@ router
 router
   .route("/delete-accountStudent")
   .delete(verifyJWT, checkRole("Student"), deleteUserAccount);
-
-// ✅ Room CRUD
-// router.route("/admin/add-room").post(verifyJWT, checkRole("Admin"), createRoom);
-// router.route("/admin/get-room").get(verifyJWT, checkRole("Admin"), getRoom);
-// router
-//   .route("/admin/get-all-room")
-//   .get(verifyJWT, checkRole("Admin"), getAllRooms);
-// router
-//   .route("/admin/update-room/:roomId")
-//   .patch(verifyJWT, checkRole("Admin"), updateRoom);
-// router
-//   .route("/admin/delete-room/:roomId")
-//   .delete(verifyJWT, checkRole("Admin"), deleteRoom);
 
 // ✅ Timetable Routes
 // router

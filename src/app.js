@@ -7,6 +7,7 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 import userRoutes from "./routes/user.route.js";
 import courseRoutes from "./routes/course.route.js";
 import instructorRoutes from "./routes/instructor.route.js";
+import roomRoutes from "./routes/room.route.js";
 
 import { ApiError } from "./utils/ApiError.js";
 const app = express();
@@ -24,6 +25,7 @@ app.use(cookieParser());
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/courses", courseRoutes);
 app.use("/api/v1/instructors", instructorRoutes);
+app.use("/api/v1/rooms", roomRoutes);
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));

@@ -2,8 +2,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Course } from "../models/course.model.js";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 
 // Function to create a new course
 export const createCourse = asyncHandler(async (req, res) => {
