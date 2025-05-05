@@ -6,6 +6,7 @@ import {
   downloadTimetablePDF,
   sendTimetableEmail,
   getStudentTimetable,
+  sendTimetableEmailToAll,
 } from "../controllers/timetable.controller.js";
 import { verifyJWT, checkRole } from "../middlewares/auth.middleware.js";
 
@@ -27,6 +28,9 @@ router
 router
   .route("/admin/send-timetable")
   .post(verifyJWT, checkRole("Admin"), sendTimetableEmail);
+router
+  .route("/admin/send-timetable-to-all")
+  .post(verifyJWT, checkRole("Admin"), sendTimetableEmailToAll);
 
 // ✅ Student Routes
 router

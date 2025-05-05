@@ -5,10 +5,10 @@ import { Timetable } from "../models/timetable.model.js";
 import { Course } from "../models/course.model.js";
 import { Instructor } from "../models/instructor.model.js";
 import { Room } from "../models/room.model.js";
+import { User } from "../models/user.model.js";
 import PDFDocument from "pdfkit"; // PDF generation library
 import { PassThrough } from "stream";
 import nodemailer from "nodemailer"; // Email sending library
-
 // Function to generate a timetable
 
 export const generateTimetable = asyncHandler(async (req, res) => {
@@ -441,11 +441,132 @@ export const getStudentTimetable = asyncHandler(async (req, res) => {
   }
 });
 
+export const sendTimetableEmailToAll = asyncHandler(async (req, res) => {
+  try {
+    const timetable = await Timetable.findOne({});
+    if (!timetable) throw new ApiError(404, "Timetable not found");
+
+    // 1. Get all students
+    const students = await User.find({ role: "Student" }).select("email");
+
+    if (!students.length) throw new ApiError(404, "No students found");
+
+    // 2. Create PDF once
+    const doc = new PDFDocument({ margin: 30, size: "A4" });
+    const bufferStream = new PassThrough();
+    let pdfBuffer = [];
+
+    doc.pipe(bufferStream);
+    bufferStream.on("data", (chunk) => pdfBuffer.push(chunk));
+
+    bufferStream.on("end", async () => {
+      const finalBuffer = Buffer.concat(pdfBuffer);
+
+      // 3. Setup Nodemailer
+      const transporter = nodemailer.createTransport({
+        service: "Gmail",
+        auth: {
+          user: process.env.SMTP_EMAIL,
+          pass: process.env.SMTP_PASSWORD,
+        },
+      });
+
+      // 4. Send email to each student
+      for (const student of students) {
+        await transporter.sendMail({
+          from: `"Admin" <${process.env.SMTP_EMAIL}>`,
+          to: student.email,
+          subject: "Class Timetable",
+          text: "Dear student, please find attached the updated class timetable.",
+          attachments: [
+            {
+              filename: "timetable.pdf",
+              content: finalBuffer,
+              contentType: "application/pdf",
+            },
+          ],
+        });
+      }
+
+      return res
+        .status(200)
+        .json(new ApiResponse(200, null, "Timetable sent to all students"));
+    });
+
+    // PDF Content
+    doc.fontSize(18).text("Timetable", { align: "center" }).moveDown(1.5);
+
+    const tableTop = doc.y;
+    const rowHeight = 25;
+    const colWidths = [40, 60, 90, 140, 70, 110, 50];
+    const cols = [
+      "Sr.No",
+      "Day",
+      "Course Code",
+      "Course Name",
+      "Time",
+      "Instructor Name",
+      "Room No",
+    ];
+
+    let x = doc.page.margins.left;
+    cols.forEach((col, i) => {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text(col, x, tableTop, { width: colWidths[i], align: "center" })
+        .rect(x, tableTop, colWidths[i], rowHeight)
+        .stroke();
+      x += colWidths[i];
+    });
+
+    let srNo = 1;
+    let y = tableTop + rowHeight;
+
+    timetable.schedule.forEach(({ day, classes }) => {
+      classes.forEach((cls) => {
+        x = doc.page.margins.left;
+        const rowData = [
+          srNo,
+          day,
+          cls.courseCode,
+          cls.courseName,
+          cls.timeSlot,
+          cls.instructorName,
+          cls.roomNumber,
+        ];
+        rowData.forEach((cell, i) => {
+          doc
+            .font("Helvetica")
+            .fontSize(9)
+            .text(cell.toString(), x, y + 7, {
+              width: colWidths[i],
+              align: "center",
+            })
+            .rect(x, y, colWidths[i], rowHeight)
+            .stroke();
+          x += colWidths[i];
+        });
+        y += rowHeight;
+        srNo++;
+      });
+    });
+
+    doc.end();
+  } catch (error) {
+    throw new ApiError(
+      error.statusCode || 500,
+      error.message || "Failed to send timetable",
+    );
+  }
+});
+
 export default {
   generateTimetable,
-  generateTimetable,
+  getTimetable,
   editTimetableEntry,
   downloadTimetablePDF,
   sendTimetableEmail,
   getStudentTimetable,
+  sendTimetableEmailToAll,
 };
