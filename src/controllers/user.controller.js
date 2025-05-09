@@ -27,7 +27,7 @@ const generateTokens = async (userId) => {
   }
 };
 
-// Function to register a new admin
+
 export const registerAdmin = asyncHandler(async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
@@ -37,9 +37,9 @@ export const registerAdmin = asyncHandler(async (req, res) => {
       throw new ApiError(403, "Only admin accounts can be created here");
     }
 
-    // Check for required fields
-    if (!username || !email || !password) {
-      throw new ApiError(400, "Username, email and password are required");
+    // Check for required fields for Admin
+      if (!username || !email || !password ) {
+      throw new ApiError(400, "Username, email, password, and dob are required for Admin");
     }
 
     // Check for existing admin
@@ -55,16 +55,14 @@ export const registerAdmin = asyncHandler(async (req, res) => {
     }
 
     // Create admin
-    const adminUser = await User.create({
+    const adminUser = new User({
       username,
       email,
       password,
       role,
     });
 
-    const createdAdmin = await User.findById(adminUser._id).select(
-      "-password -refreshToken",
-    );
+    const createdAdmin = await adminUser.save();
 
     if (!createdAdmin) {
       throw new ApiError(500, "Admin creation failed");
@@ -84,15 +82,60 @@ export const registerAdmin = asyncHandler(async (req, res) => {
         new ApiResponse(
           201,
           { user: createdAdmin, accessToken },
-          "Admin registered successfully",
-        ),
+          "Admin registered successfully"
+        )
       );
   } catch (error) {
     throw new ApiError(
       error.statusCode || 500,
-      error.message || "Admin registration failed",
+      error.message || "Admin registration failed"
     );
   }
+});
+
+// Admin login
+export const adminLogin = asyncHandler(async (req, res) => {
+  const { usernameOrEmail, password } = req.body;
+
+  // Find the user by username or email
+  const user = await User.findOne({
+    $or: [{ email: usernameOrEmail.toLowerCase() }, { username: usernameOrEmail.toLowerCase() }],
+  });
+
+  // Check if the user exists and if they are an admin
+  if (!user || user.role !== 'Admin') {
+    throw new ApiError(401, "Invalid Admin credentials or unauthorized");
+  }
+
+  // Check if the password matches
+  const isPasswordMatch = await bcrypt.compare(password, user.password);
+  if (!isPasswordMatch) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  // Generate tokens
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
+
+  // Store refresh token in the user model
+  user.refreshToken = refreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  // Set the refresh token in the cookies
+  res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
+
+  // Send the response with the access token and user details (including username)
+  res.json(
+    new ApiResponse(200, {
+      accessToken,
+      user: {
+        _id: user._id,
+        username: user.username,  // Now returning the username
+        email: user.email,
+        role: user.role,          // Include the role if needed
+      },
+    }, "Admin login successful")
+  );
 });
 
 // Function to register a new user
@@ -120,10 +163,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     });
 
     if (existingUser) {
-      throw new ApiError(
-        409,
-        "Username, email or registration number already exists",
-      );
+      throw new ApiError(409, "Username, email, or registration number already exists");
     }
 
     // Create new user
@@ -135,9 +175,7 @@ export const registerUser = asyncHandler(async (req, res) => {
       registrationNumber,
     });
 
-    const createdUser = await User.findById(user._id).select(
-      "-password -refreshToken",
-    );
+    const createdUser = await User.findById(user._id).select("-password -refreshToken");
 
     if (!createdUser) {
       throw new ApiError(500, "User creation failed");
@@ -146,96 +184,63 @@ export const registerUser = asyncHandler(async (req, res) => {
     // Generate tokens
     const { accessToken, refreshToken } = await generateTokens(user._id);
 
-    return res
-      .status(201)
-      .cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Strict",
-      })
-      .json(
-        new ApiResponse(
-          201,
-          { user: createdUser, accessToken },
-          "Student registered successfully",
-        ),
-      );
+    return res.status(201).cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+    }).json(new ApiResponse(201, {
+      user: {
+        _id: createdUser._id,
+        username: createdUser.username,
+        email: createdUser.email,
+        registrationNumber: createdUser.registrationNumber,
+        role: createdUser.role
+      },
+      accessToken
+    }, "Student registered successfully"));
+
   } catch (error) {
-    // Forward to global error handler
-    throw new ApiError(
-      error.statusCode || 500,
-      error.message || "Registration failed",
-    );
+    throw new ApiError(error.statusCode || 500, error.message || "Registration failed");
   }
 });
 
-// Function to login a user
-export const loginUser = asyncHandler(async (req, res) => {
-  try {
-    const { usernameOrEmail, password } = req.body;
+// Student login
+export const studentLogin = asyncHandler(async (req, res) => {
+  const { usernameOrEmail, password } = req.body;
 
-    if (!usernameOrEmail || !password) {
-      throw new ApiError(400, "Username/email and password are required");
-    }
+  // Find the user by username or email
+  const user = await User.findOne({
+    $or: [{ email: usernameOrEmail.toLowerCase() }, { username: usernameOrEmail.toLowerCase() }],
+  });
 
-    // Find user by username or email
-    const user = await User.findOne({
-      $or: [
-        { username: usernameOrEmail.toLowerCase() },
-        { email: usernameOrEmail.toLowerCase() },
-      ],
-    });
-
-    if (!user) {
-      throw new ApiError(401, "Invalid credentials");
-    }
-
-    // Compare passwords
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordMatch) {
-      throw new ApiError(401, "Invalid credentials");
-    }
-
-    // Generate tokens
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-
-    // Save refresh token in DB
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    // Exclude sensitive fields
-    const userData = {
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      registrationNumber: user.registrationNumber,
-    };
-
-    // Send response
-    return res
-      .status(200)
-      .cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Strict",
-      })
-      .json(
-        new ApiResponse(
-          200,
-          { user: userData, accessToken },
-          "Login successful",
-        ),
-      );
-  } catch (error) {
-    throw new ApiError(
-      error.statusCode || 500,
-      error.message || "Login failed",
-    );
+  // Check if user exists and if the user is a student
+  if (!user || user.role !== 'Student') {
+    throw new ApiError(401, "Invalid Student credentials or unauthorized");
   }
+
+  // Check if the password matches
+  const isPasswordMatch = await bcrypt.compare(password, user.password);
+  if (!isPasswordMatch) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  // Generate tokens
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
+
+  // Store refresh token in the user model
+  user.refreshToken = refreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  // Set the refresh token in the cookies
+  res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
+
+  // Send the response with the access token and user data (including username)
+  res.json(
+    new ApiResponse(200, { accessToken, user: { _id: user._id, username: user.username, email: user.email, role: user.role } }, "Student login successful")
+  );
 });
+
 
 // Function to logout a user
 export const logoutUser = asyncHandler(async (req, res) => {
@@ -460,7 +465,8 @@ export const globalErrorHandler = (err, req, res, next) => {
 export default {
   generateTokens,
   registerUser,
-  loginUser,
+  studentLogin,
+  adminLogin,
   logoutUser,
   refreshToken,
   getUserProfile,

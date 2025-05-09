@@ -33,6 +33,10 @@ app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));
 });
 
+app.listen(8000, () => {
+  console.log("Server running on http://localhost:8000");
+});
+
 app.use(errorHandler);
 
 export default app;

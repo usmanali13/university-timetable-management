@@ -1,3 +1,4 @@
+
 import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
@@ -32,18 +33,19 @@ const userSchema = new Schema(
     registrationNumber: {
       type: String,
       required: function () {
-        return this.role === "Student";
+        return this.role === "Student"; // Required for Students only
       },
       unique: function () {
-        return this.role === "Student";
+        return this.role === "Student"; // Only apply the unique constraint for students
       },
     },
     refreshToken: {
       type: String,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
+
 
 // Pre-save hook to hash the password before saving the user document
 userSchema.pre("save", async function (next) {
@@ -68,7 +70,7 @@ userSchema.methods.generateAccessToken = function () {
     process.env.ACCESS_TOKEN_SECRET,
     {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
-    },
+    }
   );
 };
 
@@ -81,7 +83,7 @@ userSchema.methods.generateRefreshToken = function () {
     process.env.REFRESH_TOKEN_SECRET,
     {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
-    },
+    }
   );
 };
 

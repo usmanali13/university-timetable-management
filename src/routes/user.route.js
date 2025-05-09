@@ -2,7 +2,8 @@ import { Router } from "express";
 import {
   registerUser,
   registerAdmin,
-  loginUser,
+  adminLogin,        // New route for Admin login
+  studentLogin,      // New route for Student login
   logoutUser,
   refreshToken,
   getUserProfile,
@@ -18,7 +19,11 @@ const router = Router();
 // ✅ Auth Routes
 router.route("/register").post(registerUser);
 router.route("/registerAdmin").post(registerAdmin);
-router.route("/login").post(loginUser);
+
+// Separate login routes for Admin and Student
+router.route("/login/admin").post(adminLogin); // Admin login
+router.route("/login/student").post(studentLogin); // Student login
+
 router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/refresh-token").post(refreshToken);
 
